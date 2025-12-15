@@ -1,0 +1,7 @@
+{
+  "name": "Lumina Salon System",
+  "description": "A premium, glass-morphic salon appointment system featuring a mobile-first client booking app and a robust admin dashboard with real-time scheduling and analytics.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
