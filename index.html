@@ -1,0 +1,180 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Lumina Salon</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+      :root {
+        /* Elegant Rose Gold Palette (Light Mode) */
+        --rose-50: #ffffff;   /* Pure White Background */
+        --rose-100: #fdf2f4;  /* Very light rose tint */
+        --rose-200: #fce7eb;
+        --rose-300: #fad4db;
+        --rose-400: #f8aab9;
+        --rose-500: #e65a78;  /* Refined Rose Gold/Pink */
+        --rose-600: #be3f5a;  /* Deep Rose Gold */
+        --rose-700: #9f1239;
+        --rose-800: #881337;
+        --rose-900: #4c0519;
+        
+        /* High Contrast Text Colors - Optimized for White Background */
+        --text-900: #0a0a0a; /* Pure Black for headers */
+        --text-800: #171717;
+        --text-600: #404040; /* Dark Grey for body */
+        --text-500: #525252;
+        --text-400: #737373;
+        
+        --bg-card: #ffffff;
+        --bg-card-border: rgba(230, 90, 120, 0.15);
+        --bg-overlay: rgba(255, 255, 255, 0.95);
+        
+        --glass-bg: rgba(255, 255, 255, 0.85);
+        --glass-border: rgba(255, 255, 255, 0.5);
+        --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.05);
+      }
+
+      /* Dark Mode Palette */
+      .theme-dark {
+        --rose-50: #000000;
+        --rose-100: #111111;
+        --rose-200: #222222;
+        --rose-300: #444444;
+        --rose-400: #666666;
+        --rose-500: #d4af37;  /* Gold */
+        --rose-600: #b5952f;
+        --rose-700: #8a7122;
+        --rose-800: #fefce8;
+        --rose-900: #ffffff;
+        
+        --text-900: #ffffff;
+        --text-800: #f5f5f5;
+        --text-600: #d4d4d4;
+        --text-500: #a3a3a3;
+        --text-400: #737373;
+
+        --bg-card: rgba(20, 20, 20, 0.9);
+        --bg-card-border: rgba(212, 175, 55, 0.15);
+        --bg-overlay: rgba(0, 0, 0, 0.92);
+        
+        --glass-bg: rgba(20, 20, 20, 0.8);
+        --glass-border: rgba(255, 255, 255, 0.1);
+        --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+      }
+
+      html, body, #root {
+        height: 100%;
+        width: 100%;
+      }
+
+      body {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        background-color: #e5e5e5;
+        color: var(--text-900);
+        -webkit-font-smoothing: antialiased;
+        transition: background-color 0.3s ease, color 0.3s ease;
+        overflow: hidden; /* Prevent body scroll, handle in root */
+      }
+
+      /* Hide Scrollbar */
+      ::-webkit-scrollbar {
+        display: none;
+      }
+      * {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+
+      /* Enhanced Glassmorphism */
+      .card-glass {
+        background: var(--bg-card);
+        border: 1px solid var(--bg-card-border);
+        box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+        transition: all 0.2s ease-in-out;
+      }
+      
+      .theme-dark .card-glass {
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+      }
+      
+      /* Segmented Control Glass */
+      .glass-segment-container {
+        background: rgba(240, 240, 240, 0.7);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+      }
+      
+      .theme-dark .glass-segment-container {
+        background: rgba(30, 30, 30, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      /* iOS-like transitions */
+      .page-transition {
+        animation: fadeIn 0.3s ease-in-out;
+      }
+
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+    </style>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              rose: {
+                50: 'var(--rose-50)',
+                100: 'var(--rose-100)',
+                200: 'var(--rose-200)',
+                300: 'var(--rose-300)',
+                400: 'var(--rose-400)',
+                500: 'var(--rose-500)',
+                600: 'var(--rose-600)',
+                700: 'var(--rose-700)',
+                800: 'var(--rose-800)',
+                900: 'var(--rose-900)',
+              },
+              gray: {
+                900: 'var(--text-900)',
+                800: 'var(--text-800)',
+                600: 'var(--text-600)',
+                500: 'var(--text-500)',
+                400: 'var(--text-400)',
+              },
+            }
+          }
+        }
+      }
+    </script>
+
+<link rel="stylesheet" href="/index.css">
+<script type="importmap">
+{
+  "imports": {
+    "lucide-react": "https://esm.sh/lucide-react@^0.561.0",
+    "recharts": "https://esm.sh/recharts@^3.5.1",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "vite": "https://esm.sh/vite@^7.2.7",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@^2.87.1",
+    "jsqr": "https://esm.sh/jsqr@^1.4.0"
+  }
+}
+</script>
+  <script type="module" crossorigin src="/LuMiNa/assets/index-D5uJ985s.js"></script>
+</head>
+  <body>
+    <div id="root" class="flex justify-center items-center min-h-screen"></div>
+    <!-- Vite requires the entry point to be explicitly imported as a module -->
+  </body>
+</html>
