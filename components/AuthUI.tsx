@@ -1,9 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
-import { Mail, Lock, User, Phone, ArrowRight, Eye, EyeOff, Loader, Key, ChevronLeft, RefreshCw, AlertCircle } from 'lucide-react';
+import { Mail, Lock, User, Phone, ArrowRight, Eye, EyeOff, Loader, Key, ChevronLeft, RefreshCw, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import { Button } from './UI';
 import { AuthService } from '../services/auth';
 import { formatPhoneNumber } from '../utils/helpers';
-import { supabase } from '../services/supabase';
 
 interface AuthUIProps {
   onLoginSuccess: () => void;
@@ -22,12 +22,21 @@ export const AuthUI: React.FC<AuthUIProps> = ({ onLoginSuccess, defaultMode }) =
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
-  const [pin, setPin] = useState(''); // Added PIN state
+  const [pin, setPin] = useState(''); 
   const [otp, setOtp] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   
   // Track flow to differentiate OTP for signup vs recovery
   const [authFlow, setAuthFlow] = useState<'signup' | 'recovery'>('signup');
+
+  // Check for pending reset state on mount
+  useEffect(() => {
+    const isResetPending = localStorage.getItem('lumina_reset_pending') === 'true';
+    if (isResetPending) {
+        setView('reset_password');
+    }
+  }, []);
 
   // Set defaults for Admin and Staff
   useEffect(() => {
@@ -37,10 +46,6 @@ export const AuthUI: React.FC<AuthUIProps> = ({ onLoginSuccess, defaultMode }) =
     } else if (defaultMode === 'staff' && view === 'login') {
       setEmail('s0001@lumina.com');
       setPassword('s0001Lumina');
-    } else if (defaultMode === 'client' && view === 'login') {
-      // Clear if switching back to client from a pre-filled mode
-      if (email === 'admin@gmail.com' || email === 's0001@lumina.com') setEmail('');
-      if (password === 'admin1234' || password === 's0001Lumina') setPassword('');
     }
   }, [defaultMode, view]);
 
@@ -52,6 +57,14 @@ export const AuthUI: React.FC<AuthUIProps> = ({ onLoginSuccess, defaultMode }) =
     }
   }, [resendCooldown]);
 
+  // Helper: Password Strength Validator
+  const validatePasswordStrength = (pwd: string) => {
+      const hasLength = pwd.length >= 8;
+      const hasNumber = /\d/.test(pwd);
+      const hasLetter = /[a-zA-Z]/.test(pwd);
+      return hasLength && hasNumber && hasLetter;
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -59,9 +72,7 @@ export const AuthUI: React.FC<AuthUIProps> = ({ onLoginSuccess, defaultMode }) =
 
     const { data, error } = await AuthService.signIn(email, password);
     
-    // Auto-create Admin/Demo logic if login fails for demo purposes
     if (error) {
-       // Demo User Fallback
        if (email === 'demo@gmail.com' && (error.message.includes('Invalid login') || error.message.includes('not found'))) {
           const { data: signUpData, error: signUpError } = await AuthService.signUp(email, password, 'Demo User', '+60 123456789', '123456', 'customer');
           if (!signUpError && signUpData.session) {
@@ -70,7 +81,6 @@ export const AuthUI: React.FC<AuthUIProps> = ({ onLoginSuccess, defaultMode }) =
                return;
           }
        }
-       // Admin User Fallback
        if (defaultMode === 'admin' && email === 'admin@gmail.com' && (error.message.includes('Invalid login') || error.message.includes('not found'))) {
           const { data: signUpData, error: signUpError } = await AuthService.signUp(email, password, 'Admin User', '', '000000', 'admin');
           if (!signUpError && signUpData.session) {
@@ -92,9 +102,15 @@ export const AuthUI: React.FC<AuthUIProps> = ({ onLoginSuccess, defaultMode }) =
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!pin || pin.length !== 6) {
-        setError("Please enter a valid 6-digit Security PIN for transactions.");
+        setError("Please enter a valid 6-digit Security PIN.");
         return;
     }
+    
+    if (!validatePasswordStrength(password)) {
+        setError("Password must be at least 8 characters and include both letters and numbers.");
+        return;
+    }
+
     setLoading(true);
     setError(null);
     setAuthFlow('signup');
@@ -119,41 +135,28 @@ export const AuthUI: React.FC<AuthUIProps> = ({ onLoginSuccess, defaultMode }) =
     setLoading(true);
     setError(null);
     
-    const type = authFlow === 'recovery' ? 'recovery' : 'signup';
-    
-    // For this mock/demo environment, we might just simulate success if it's recovery since real email sending might fail without SMTP
-    if (authFlow === 'recovery' && otp === '123456') {
-        // Mock success for recovery demo
-        setLoading(false);
-        setView('reset_password');
-        return;
+    // Set flag before verification if recovery, to prevent App.tsx from switching views immediately
+    if (authFlow === 'recovery') {
+        localStorage.setItem('lumina_reset_pending', 'true');
     }
 
+    const type = authFlow === 'recovery' ? 'recovery' : 'signup';
     const { data, error } = await AuthService.verifyOtp(email, otp, type);
     
     setLoading(false);
     if (error) {
+      if (authFlow === 'recovery') localStorage.removeItem('lumina_reset_pending'); // Clear if failed
       setError(error.message);
     } else if (data.session) {
       if (authFlow === 'recovery') {
+          // Explicitly transition to Reset Password View
           setView('reset_password');
+          setError(null);
+          setNewPassword('');
+          setConfirmPassword('');
       } else {
           onLoginSuccess();
       }
-    }
-  };
-
-  const handleResendOtp = async () => {
-    if (resendCooldown > 0) return;
-    setLoading(true);
-    setError(null);
-    const { error } = await AuthService.resendOtp(email, 'signup');
-    setLoading(false);
-    if (error) {
-      setError(error.message);
-    } else {
-      setResendCooldown(60);
-      alert(`Code sent to ${email}`);
     }
   };
 
@@ -163,34 +166,70 @@ export const AuthUI: React.FC<AuthUIProps> = ({ onLoginSuccess, defaultMode }) =
     setError(null);
     setAuthFlow('recovery');
     
-    // In production, use: await AuthService.resetPasswordForEmail(email);
+    const { error } = await AuthService.resetPasswordForEmail(email);
+    setLoading(false);
     
-    setTimeout(() => {
-        setLoading(false);
-        // Fake success to show OTP screen
+    if (error) {
+        setError(error.message);
+    } else {
         setView('otp');
         setResendCooldown(30);
-        alert(`OTP sent to ${email} (Use 123456 for demo)`);
-    }, 1000);
+        setOtp('');
+    }
   };
   
   const handleResetPassword = async (e: React.FormEvent) => {
       e.preventDefault();
+      if (newPassword !== confirmPassword) {
+          setError("Passwords do not match.");
+          return;
+      }
+      
+      if (!validatePasswordStrength(newPassword)) {
+          setError("Password must be at least 8 characters and include both letters and numbers.");
+          return;
+      }
+
       setLoading(true);
-      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      setError(null);
+      
+      const { error } = await AuthService.updateUserPassword(newPassword);
+      
       setLoading(false);
       if (error) {
           setError(error.message);
       } else {
-          alert("Password updated successfully");
-          setView('login');
+          localStorage.removeItem('lumina_reset_pending'); // Clear flag
+          alert("Success! Your password has been updated.");
+          onLoginSuccess(); 
       }
   };
 
-  // Responsive Container Logic
+  const handleResendOtp = async () => {
+    if (resendCooldown > 0) return;
+    setLoading(true);
+    setError(null);
+    
+    const type = authFlow === 'recovery' ? 'recovery' : 'signup';
+    if (type === 'recovery') {
+        const { error } = await AuthService.resetPasswordForEmail(email);
+        setLoading(false);
+        if (error) setError(error.message);
+        else { setResendCooldown(60); }
+    } else {
+        const { error } = await AuthService.resendOtp(email, 'signup');
+        setLoading(false);
+        if (error) setError(error.message);
+        else { setResendCooldown(60); }
+    }
+  };
+
   const containerClasses = (defaultMode === 'client' || defaultMode === 'staff')
     ? "w-full h-full md:w-[440px] md:h-[956px] md:rounded-[60px] border-0 md:border-8 md:ring-1"
     : "w-full h-full rounded-0 border-0";
+
+  // Real-time validation for Reset Password View button state
+  const isPasswordValid = validatePasswordStrength(newPassword) && newPassword === confirmPassword;
 
   return (
     <div className="flex items-center justify-center w-screen h-screen bg-gray-900 overflow-hidden">
@@ -202,66 +241,70 @@ export const AuthUI: React.FC<AuthUIProps> = ({ onLoginSuccess, defaultMode }) =
         )}
 
         <div className="w-full max-w-sm z-10">
-          
-          {/* Header Branding */}
           <div className="text-center mb-10">
-            <div className="w-24 h-24 bg-rose-500 rounded-[22px] flex items-center justify-center text-white font-black text-5xl shadow-xl shadow-rose-500/30 mx-auto mb-6">L</div>
+            <div className="w-20 h-20 bg-rose-500 rounded-[22px] flex items-center justify-center text-white font-black text-4xl shadow-xl shadow-rose-500/30 mx-auto mb-6 transition-transform hover:scale-110">L</div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">
-              {view === 'login' ? 'Welcome Back' : view === 'register' ? 'Join Lumina' : view === 'otp' ? 'Verification' : view === 'reset_password' ? 'New Password' : 'Reset Password'}
+              {view === 'login' ? 'Welcome Back' : 
+               view === 'register' ? 'Join Lumina' : 
+               view === 'otp' ? 'Confirm Identity' : 
+               view === 'reset_password' ? 'New Password' : 
+               'Reset Password'}
             </h1>
-            <p className="text-gray-500 dark:text-gray-400 text-[15px] font-medium leading-relaxed">
-              {view === 'otp' ? `Enter the code sent to ${email}` : defaultMode === 'admin' ? 'Admin Portal Access' : defaultMode === 'staff' ? 'Staff Portal Access' : 'Experience luxury at your fingertips.'}
+            <p className="text-gray-500 dark:text-gray-400 text-[14px] font-medium leading-relaxed px-4">
+              {view === 'otp' ? `We've sent a 6-digit code to ${email}` : 
+               view === 'reset_password' ? 'Create a new secure password for your account.' :
+               'Elegance and luxury in every appointment.'}
             </p>
           </div>
 
-          {/* Error Notification */}
           {error && (
-            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center gap-3 backdrop-blur-md">
-              <div className="w-1 h-8 bg-red-500 rounded-full"></div>
+            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center gap-3 backdrop-blur-md animate-shake">
+              <div className="w-1 h-8 bg-red-50 rounded-full"></div>
               <p className="text-red-600 dark:text-red-400 text-xs font-bold flex-1">{error}</p>
             </div>
           )}
 
-          {/* Login Form Container */}
           <div className="space-y-5">
-            <form onSubmit={view === 'login' ? handleLogin : view === 'register' ? handleRegister : view === 'otp' ? handleOtpVerify : view === 'reset_password' ? handleResetPassword : handleForgotPass} className="space-y-4">
+            <form onSubmit={
+              view === 'login' ? handleLogin : 
+              view === 'register' ? handleRegister : 
+              view === 'otp' ? handleOtpVerify : 
+              view === 'reset_password' ? handleResetPassword : 
+              handleForgotPass
+            } className="space-y-4">
               
-              {/* Registration Extra Fields */}
               {view === 'register' && (
                 <>
-                  <div className="bg-white rounded-2xl flex items-center px-4 py-4 border border-gray-200 focus-within:border-rose-500/50 transition-all shadow-sm">
+                  <div className="bg-gray-50 dark:bg-zinc-900 rounded-2xl flex items-center px-4 py-4 border border-gray-100 dark:border-white/5 focus-within:border-rose-500/50 transition-all shadow-sm">
                     <User className="text-rose-400 mr-3" size={20} />
                     <input 
                       type="text" 
                       placeholder="Full Name" 
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      className="bg-transparent w-full outline-none text-black font-medium placeholder:text-gray-400"
+                      className="bg-transparent w-full outline-none text-gray-900 dark:text-white font-medium placeholder:text-gray-400"
                       required
                     />
                   </div>
-                  <div className="bg-white rounded-2xl flex items-center px-4 py-4 border border-gray-200 focus-within:border-rose-500/50 transition-all shadow-sm">
+                  <div className="bg-gray-50 dark:bg-zinc-900 rounded-2xl flex items-center px-4 py-4 border border-gray-100 dark:border-white/5 focus-within:border-rose-500/50 transition-all shadow-sm">
                     <Phone className="text-rose-400 mr-3" size={20} />
                     <input 
                       type="tel" 
                       placeholder="+60 12 345 6789" 
                       value={phone}
                       onChange={(e) => setPhone(formatPhoneNumber(e.target.value))}
-                      className="bg-transparent w-full outline-none text-black font-medium placeholder:text-gray-400"
+                      className="bg-transparent w-full outline-none text-gray-900 dark:text-white font-medium placeholder:text-gray-400"
                       required
                     />
                   </div>
-                  <div className="bg-white rounded-2xl flex items-center px-4 py-4 border border-gray-200 focus-within:border-rose-500/50 transition-all shadow-sm">
+                  <div className="bg-gray-50 dark:bg-zinc-900 rounded-2xl flex items-center px-4 py-4 border border-gray-100 dark:border-white/5 focus-within:border-rose-500/50 transition-all shadow-sm">
                     <Lock className="text-rose-400 mr-3" size={20} />
                     <input 
                       type="password" 
                       placeholder="6-Digit Security PIN" 
                       value={pin}
-                      onChange={(e) => {
-                         const val = e.target.value.replace(/\D/g,'').slice(0,6);
-                         setPin(val);
-                      }}
-                      className="bg-transparent w-full outline-none text-black font-medium placeholder:text-gray-400 tracking-widest"
+                      onChange={(e) => setPin(e.target.value.replace(/\D/g,'').slice(0,6))}
+                      className="bg-transparent w-full outline-none text-gray-900 dark:text-white font-medium placeholder:text-gray-400 tracking-widest"
                       required
                       minLength={6}
                       maxLength={6}
@@ -271,22 +314,22 @@ export const AuthUI: React.FC<AuthUIProps> = ({ onLoginSuccess, defaultMode }) =
                 </>
               )}
 
-              {/* OTP Field */}
               {view === 'otp' ? (
                 <div className="space-y-4">
-                  <div className="bg-white rounded-2xl flex items-center px-4 py-4 border border-gray-200 focus-within:border-rose-500/50 transition-all shadow-sm">
+                  <div className="bg-gray-50 dark:bg-zinc-900 rounded-2xl flex items-center px-4 py-4 border border-gray-100 dark:border-white/5 focus-within:border-rose-500/50 transition-all shadow-sm">
                     <Key className="text-rose-400 mr-3" size={20} />
                     <input 
                       type="text" 
-                      placeholder="One-Time Password" 
+                      placeholder="123456" 
                       value={otp}
-                      onChange={(e) => setOtp(e.target.value)}
-                      className="bg-transparent w-full outline-none text-black font-bold tracking-widest text-lg"
+                      onChange={(e) => setOtp(e.target.value.replace(/\D/g,'').slice(0,6))}
+                      className="bg-transparent w-full outline-none text-gray-900 dark:text-white font-bold tracking-[0.5em] text-2xl text-center"
                       required
                       maxLength={6}
+                      inputMode="numeric"
+                      autoFocus
                     />
                   </div>
-                  
                   <button 
                     type="button" 
                     onClick={handleResendOtp}
@@ -297,43 +340,75 @@ export const AuthUI: React.FC<AuthUIProps> = ({ onLoginSuccess, defaultMode }) =
                   </button>
                 </div>
               ) : view === 'reset_password' ? (
-                  <div className="bg-white rounded-2xl flex items-center px-4 py-4 border border-gray-200 focus-within:border-rose-500/50 transition-all shadow-sm">
-                    <Lock className="text-rose-400 mr-3" size={20} />
-                    <input 
-                      type="password" 
-                      placeholder="New Password" 
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      className="bg-transparent w-full outline-none text-black font-medium placeholder:text-gray-400"
-                      required
-                      minLength={6}
-                    />
+                  <div className="space-y-4 animate-fadeIn">
+                    <div className="bg-gray-50 dark:bg-zinc-900 rounded-2xl flex items-center px-4 py-4 border border-gray-100 dark:border-white/5 focus-within:border-rose-500/50 transition-all shadow-sm">
+                        <ShieldCheck className="text-rose-400 mr-3" size={20} />
+                        <input 
+                          type={showPassword ? "text" : "password"}
+                          placeholder="New Password" 
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          className="bg-transparent w-full outline-none text-gray-900 dark:text-white font-medium placeholder:text-gray-400"
+                          required
+                          minLength={8}
+                          autoFocus
+                        />
+                    </div>
+                    <div className="bg-gray-50 dark:bg-zinc-900 rounded-2xl flex items-center px-4 py-4 border border-gray-100 dark:border-white/5 focus-within:border-rose-500/50 transition-all shadow-sm">
+                        <Lock className="text-rose-400 mr-3" size={20} />
+                        <input 
+                          type={showPassword ? "text" : "password"}
+                          placeholder="Confirm New Password" 
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          className="bg-transparent w-full outline-none text-gray-900 dark:text-white font-medium placeholder:text-gray-400"
+                          required
+                          minLength={8}
+                        />
+                        {confirmPassword && newPassword === confirmPassword && (
+                           <CheckCircle2 size={18} className="text-green-500 ml-2" />
+                        )}
+                    </div>
+                    
+                    <button 
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="w-full text-right text-[11px] font-bold text-gray-400 hover:text-rose-500 transition-colors uppercase tracking-widest"
+                    >
+                      {showPassword ? "Hide Characters" : "Show Characters"}
+                    </button>
+
+                    <div className="p-3 bg-rose-500/5 border border-rose-500/10 rounded-xl">
+                       <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight">
+                         Requirement: Minimum 8 characters. Must include letters and numbers.
+                       </p>
+                    </div>
                   </div>
               ) : (
                 <>
-                  {/* Standard Login/Register/Forgot Fields */}
-                  <div className="bg-white rounded-2xl flex items-center px-4 py-4 border border-gray-200 focus-within:border-rose-500/50 transition-all shadow-sm">
+                  <div className="bg-gray-50 dark:bg-zinc-900 rounded-2xl flex items-center px-4 py-4 border border-gray-100 dark:border-white/5 focus-within:border-rose-500/50 transition-all shadow-sm">
                     <Mail className="text-rose-400 mr-3" size={20} />
                     <input 
                       type="email" 
                       placeholder="Email Address" 
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="bg-transparent w-full outline-none text-black font-medium placeholder:text-gray-400"
+                      className="bg-transparent w-full outline-none text-gray-900 dark:text-white font-medium placeholder:text-gray-400"
                       required
                     />
                   </div>
 
                   {view !== 'forgot' && (
-                    <div className="bg-white rounded-2xl flex items-center px-4 py-4 border border-gray-200 focus-within:border-rose-500/50 transition-all shadow-sm">
+                    <div className="bg-gray-50 dark:bg-zinc-900 rounded-2xl flex items-center px-4 py-4 border border-gray-100 dark:border-white/5 focus-within:border-rose-500/50 transition-all shadow-sm">
                       <Lock className="text-rose-400 mr-3" size={20} />
                       <input 
                         type={showPassword ? "text" : "password"} 
                         placeholder="Password" 
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        className="bg-transparent w-full outline-none text-black font-medium placeholder:text-gray-400"
+                        className="bg-transparent w-full outline-none text-gray-900 dark:text-white font-medium placeholder:text-gray-400"
                         required
+                        minLength={view === 'register' ? 8 : undefined}
                       />
                       <button 
                         type="button"
@@ -347,22 +422,24 @@ export const AuthUI: React.FC<AuthUIProps> = ({ onLoginSuccess, defaultMode }) =
                 </>
               )}
 
-              {/* Main Action Button */}
               <Button 
                 type="submit" 
-                disabled={loading}
-                className="w-full h-14 text-[17px] font-bold rounded-2xl bg-rose-500 hover:bg-rose-600 text-white shadow-lg shadow-rose-500/30 flex items-center justify-center gap-2 mt-4 transition-all active:scale-[0.98]"
+                disabled={loading || (view === 'reset_password' && !isPasswordValid)}
+                className={`w-full h-14 text-[17px] font-bold rounded-2xl text-white shadow-lg flex items-center justify-center gap-2 mt-4 transition-all active:scale-[0.98] ${view === 'reset_password' && !isPasswordValid ? 'bg-gray-300 cursor-not-allowed opacity-50' : 'bg-rose-500 hover:bg-rose-600 shadow-rose-500/30'}`}
               >
                 {loading ? <Loader className="animate-spin" /> : (
                   <>
-                    {view === 'login' ? 'Sign In' : view === 'register' ? 'Create Account' : view === 'otp' ? 'Verify Code' : view === 'reset_password' ? 'Set Password' : 'Send Code'} 
+                    {view === 'login' ? 'Sign In' : 
+                     view === 'register' ? 'Create Account' : 
+                     view === 'otp' ? 'Confirm Code' : 
+                     view === 'reset_password' ? 'Update & Log In' : 
+                     'Send Reset Code'} 
                     {view !== 'otp' && <ArrowRight size={20} strokeWidth={2.5} />}
                   </>
                 )}
               </Button>
             </form>
 
-            {/* View Switchers */}
             <div className="pt-2 flex flex-col items-center gap-4">
               {view === 'login' && (
                 <>
@@ -374,14 +451,14 @@ export const AuthUI: React.FC<AuthUIProps> = ({ onLoginSuccess, defaultMode }) =
                     <div className="w-full pt-4 border-t border-gray-100 dark:border-white/5 mt-2 text-center">
                        <span className="text-[13px] text-gray-400 mr-2">New to Lumina?</span>
                        <button onClick={() => setView('register')} className="text-[13px] font-bold text-rose-500 hover:underline">
-                         Sign Up
+                         Join Now
                        </button>
                     </div>
                   )}
                 </>
               )}
               
-              {(view === 'register' || view === 'forgot' || view === 'otp') && (
+              {(view === 'register' || view === 'forgot' || view === 'otp' || view === 'reset_password') && (
                 <button onClick={() => setView('login')} className="flex items-center gap-1 text-[13px] font-bold text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors">
                    <ChevronLeft size={14} /> Back to Sign In
                 </button>
@@ -390,8 +467,7 @@ export const AuthUI: React.FC<AuthUIProps> = ({ onLoginSuccess, defaultMode }) =
           </div>
         </div>
         
-        {/* Background Ambient Glow */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-rose-500/20 rounded-full blur-[100px] pointer-events-none z-0"></div>
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-rose-500/10 rounded-full blur-[100px] pointer-events-none z-0"></div>
       </div>
     </div>
   );

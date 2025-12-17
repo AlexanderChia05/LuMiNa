@@ -80,7 +80,7 @@ const mapReward = (data: any): Reward => ({
   cost: 0, 
   discountCents: data.discount_type === 'percentage' ? data.discount_cents : data.discount_cents, 
   imageUrl: '',
-  expiryDate: data.expiry_date ? new Date(data.expiry_date).toLocaleDateString() : 'No Expiry',
+  expiryDate: data.expiry_date ? new Date(data.expiry_date).toLocaleDateString('en-GB') : 'No Expiry',
   serialNumber: data.serial_number || 'N/A'
 });
 
@@ -156,7 +156,7 @@ const mapNotification = (data: any): Notification => {
 const mapHistory = (data: any): RewardHistoryItem => ({
   id: data.id,
   title: data.title,
-  date: new Date(data.created_at).toLocaleDateString(),
+  date: new Date(data.created_at).toLocaleDateString('en-GB'),
   pts: `${data.type === 'spend' ? '-' : '+'}${data.points}`,
   type: data.type
 });
@@ -164,7 +164,7 @@ const mapHistory = (data: any): RewardHistoryItem => ({
 // --- API METHODS ---
 
 export const Api = {
-  // Verify Payment PIN
+// ... existing API methods ...
   verifyTransactionPin: async (userId: string, pin: string): Promise<boolean> => {
      const { data } = await supabase
         .from('customer')

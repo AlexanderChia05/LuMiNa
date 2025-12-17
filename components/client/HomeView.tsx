@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect } from 'react';
 import { Sun, Moon, Star, ChevronRight, Plus, Calendar, Clock } from 'lucide-react';
 import { Button, Card } from '../UI';
@@ -106,7 +105,7 @@ export const HomeView = ({
                <Card key={appt.id} className="flex items-center gap-4 border border-rose-100 dark:border-white/10 shadow-sm" onClick={() => setShowMyBookings(true)}>
                  <div className="flex flex-col items-center bg-rose-50 dark:bg-rose-500/20 rounded-2xl p-3 min-w-[60px] border border-rose-100 dark:border-transparent">
                    <span className="text-rose-600 dark:text-yellow-400 font-bold text-lg">{new Date(appt.date).getDate()}</span >
-                   <span className="text-rose-600 dark:text-yellow-400 text-xs font-bold uppercase">{new Date(appt.date).toLocaleDateString('en-US', { month: 'short' })}</span>
+                   <span className="text-rose-600 dark:text-yellow-400 text-xs font-bold uppercase">{new Date(appt.date).toLocaleDateString('en-GB', { month: 'short' })}</span>
                  </div>
                  <div className="flex-1 min-w-0">
                    <h4 className="text-lg font-bold text-rose-900 dark:text-rose-900 mb-1 truncate">{service?.name || 'Appointment'}</h4>
@@ -140,7 +139,7 @@ export const HomeView = ({
                   <span className="bg-rose-600/90 backdrop-blur-sm text-white text-xs font-bold px-2 py-1 rounded-lg w-fit mb-2 shadow-sm border border-white/20">{promo.discount}</span>
                   <h4 className="text-white font-bold text-xl leading-tight mb-1 shadow-black/50 drop-shadow-md">{promo.title}</h4>
                   <p className="text-gray-200 text-xs font-medium">{promo.description}</p>
-                  <p className="text-gray-200 text-[10px] font-medium mt-1 opacity-80">Valid: {new Date(promo.startDate).toLocaleDateString()} - {new Date(promo.endDate).toLocaleDateString()}</p>
+                  <p className="text-gray-200 text-[10px] font-medium mt-1 opacity-80">Valid: {new Date(promo.startDate).toLocaleDateString('en-GB')} - {new Date(promo.endDate).toLocaleDateString('en-GB')}</p>
                 </div>
               </div>
             ))}

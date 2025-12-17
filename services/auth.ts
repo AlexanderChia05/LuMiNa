@@ -36,10 +36,18 @@ export const AuthService = {
     return { error };
   },
 
-  // Forgot Password
+  // Forgot Password - Triggers Recovery Email
   resetPasswordForEmail: async (email: string) => {
     const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin, // Redirect back to app
+      redirectTo: window.location.origin, // Required for deep links, but we also support manual OTP entry
+    });
+    return { data, error };
+  },
+
+  // Update Password (Authenticated User)
+  updateUserPassword: async (password: string) => {
+    const { data, error } = await supabase.auth.updateUser({
+      password
     });
     return { data, error };
   },

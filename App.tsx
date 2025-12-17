@@ -12,8 +12,12 @@ export default function App() {
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<string>('customer');
+  const [resetPending, setResetPending] = useState(false);
 
   useEffect(() => {
+    // Check initial reset pending state
+    setResetPending(localStorage.getItem('lumina_reset_pending') === 'true');
+
     // FORCE LOGOUT ON APP LOAD to ensure we start at Login Page
     const initSession = async () => {
        await AuthService.signOut();
@@ -24,6 +28,9 @@ export default function App() {
 
     // Listen for auth changes (login/logout events)
     const { data: { subscription } } = AuthService.supabase.auth.onAuthStateChange((_event, session) => {
+      // Sync pending state on auth change
+      setResetPending(localStorage.getItem('lumina_reset_pending') === 'true');
+      
       setSession(session);
       if (session?.user?.user_metadata?.role) {
          setUserRole(session.user.user_metadata.role);
@@ -48,37 +55,44 @@ export default function App() {
       await AuthService.signOut();
   };
 
+  const onLoginSuccess = () => {
+      // Callback to clear reset pending state if AuthUI finishes successfully
+      setResetPending(false);
+  };
+
   if (loading) {
     return <div className="w-screen h-screen flex items-center justify-center bg-[#F2F2F7] dark:bg-black"><Loader className="animate-spin text-gray-400" /></div>;
   }
 
-  // If no session, show Auth UI based on selected view mode
-  if (!session) {
+  // If no session OR if a password reset is pending, show Auth UI based on selected view mode
+  if (!session || resetPending) {
     return (
       <div className="font-sans text-gray-900 antialiased w-screen h-screen overflow-hidden relative">
-        <AuthUI key={view} onLoginSuccess={() => {}} defaultMode={view} />
+        <AuthUI key={view} onLoginSuccess={onLoginSuccess} defaultMode={view} />
         
         {/* Context Switcher for Login Screen - Now matches Authenticated View (Bottom-Right, Hidden) */}
-        <div className="fixed bottom-6 right-6 z-[100] flex flex-col gap-2 pointer-events-auto opacity-0 hover:opacity-100 transition-opacity duration-300">
-           <button 
-             onClick={() => setView('client')}
-             className={`px-4 py-2 rounded-full shadow-lg backdrop-blur-md text-sm font-semibold border border-white/20 ${view === 'client' ? 'bg-rose-500 text-white' : 'bg-black/60 text-white hover:bg-black/80'}`}
-           >
-             Client App
-           </button>
-           <button 
-             onClick={() => setView('staff')} 
-             className={`px-4 py-2 rounded-full shadow-lg backdrop-blur-md text-sm font-semibold border border-white/20 ${view === 'staff' ? 'bg-rose-500 text-white' : 'bg-black/60 text-white hover:bg-black/80'}`}
-           >
-             Staff App
-           </button>
-           <button 
-             onClick={() => setView('admin')} 
-             className={`px-4 py-2 rounded-full shadow-lg backdrop-blur-md text-sm font-semibold border border-white/20 ${view === 'admin' ? 'bg-rose-500 text-white' : 'bg-black/60 text-white hover:bg-black/80'}`}
-           >
-             Admin Portal
-           </button>
-        </div>
+        {!resetPending && (
+          <div className="fixed bottom-6 right-6 z-[100] flex flex-col gap-2 pointer-events-auto opacity-0 hover:opacity-100 transition-opacity duration-300">
+             <button 
+               onClick={() => setView('client')}
+               className={`px-4 py-2 rounded-full shadow-lg backdrop-blur-md text-sm font-semibold border border-white/20 ${view === 'client' ? 'bg-rose-500 text-white' : 'bg-black/60 text-white hover:bg-black/80'}`}
+             >
+               Client App
+             </button>
+             <button 
+               onClick={() => setView('staff')} 
+               className={`px-4 py-2 rounded-full shadow-lg backdrop-blur-md text-sm font-semibold border border-white/20 ${view === 'staff' ? 'bg-rose-500 text-white' : 'bg-black/60 text-white hover:bg-black/80'}`}
+             >
+               Staff App
+             </button>
+             <button 
+               onClick={() => setView('admin')} 
+               className={`px-4 py-2 rounded-full shadow-lg backdrop-blur-md text-sm font-semibold border border-white/20 ${view === 'admin' ? 'bg-rose-500 text-white' : 'bg-black/60 text-white hover:bg-black/80'}`}
+             >
+               Admin Portal
+             </button>
+          </div>
+        )}
       </div>
     );
   }

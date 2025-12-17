@@ -571,7 +571,7 @@ export const ClientBooking = ({ userId }: ClientBookingProps) => {
 
   // Profile
   const openEditProfile = () => { if(user) { setEditProfileForm({ name: user.name, email: user.email, phone: user.phone || '' }); setIsEditProfileOpen(true); }};
-  const saveProfile = () => { setUser(prev => prev ? ({ ...prev, name: editProfileForm.name, email: editProfileForm.email, phone: editProfileForm.phone }) : null); setIsEditProfileOpen(false); };
+  const saveProfile = () => { setUser(prev => prev ? ({ ...prev, name: editProfileForm.name, phone: editProfileForm.phone }) : null); setIsEditProfileOpen(false); };
 
   const tabItems = [
     { id: 'home', icon: Home, label: 'Home' },
@@ -749,7 +749,6 @@ export const ClientBooking = ({ userId }: ClientBookingProps) => {
                 <div className="flex justify-between items-center mb-4"><h3 className="text-lg font-bold text-gray-900 dark:text-white">Edit Profile</h3><button onClick={() => setIsEditProfileOpen(false)}><X size={20}/></button></div>
                 <div className="space-y-4">
                    <div><label className="text-xs font-bold text-gray-500 mb-1 block">Full Name</label><input type="text" value={editProfileForm.name} onChange={(e) => setEditProfileForm({...editProfileForm, name: e.target.value})} className="w-full p-3 rounded-xl border border-gray-300 bg-white text-black outline-none focus:ring-2 focus:ring-rose-500" /></div>
-                   <div><label className="text-xs font-bold text-gray-500 mb-1 block">Email</label><input type="text" value={editProfileForm.email} onChange={(e) => setEditProfileForm({...editProfileForm, email: e.target.value})} className="w-full p-3 rounded-xl border border-gray-300 bg-white text-black outline-none focus:ring-2 focus:ring-rose-500" /></div>
                    <div><label className="text-xs font-bold text-gray-500 mb-1 block">Phone</label><input type="text" value={editProfileForm.phone} onChange={(e) => setEditProfileForm({...editProfileForm, phone: formatPhoneNumber(e.target.value)})} className="w-full p-3 rounded-xl border border-gray-300 bg-white text-black outline-none focus:ring-2 focus:ring-rose-500" placeholder="+60 123456789" /></div>
                    <Button onClick={saveProfile} className="w-full">Save Changes</Button>
                 </div>
@@ -834,7 +833,7 @@ export const ClientBooking = ({ userId }: ClientBookingProps) => {
                  </div>
                  <h3 className="text-xl font-bold text-gray-900 mb-2">Confirm Reschedule?</h3>
                  <p className="text-gray-600 text-sm mb-6">
-                    You are moving your appointment to <b>{getBookingDate(rescheduleDateOffset).toLocaleDateString()} at {rescheduleSlot}</b>.
+                    You are moving your appointment to <b>{getBookingDate(rescheduleDateOffset).toLocaleDateString('en-GB')} at {rescheduleSlot}</b>.
                  </p>
                  <div className="flex gap-3">
                    <Button variant="secondary" onClick={() => setRescheduleConfirmOpen(false)} className="flex-1">Back</Button>
