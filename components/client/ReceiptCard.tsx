@@ -1,5 +1,4 @@
 
-
 import React, { useState } from 'react';
 import { Card } from '../UI';
 import { Receipt } from '../../types';
@@ -48,15 +47,14 @@ export const ReceiptCard = ({ receipt }: ReceiptCardProps) => {
                 <span className="font-bold text-gray-900 dark:text-white text-sm">{receipt.serviceName}</span>
                 <span className="font-medium text-gray-900 dark:text-white">RM {(receipt.totalCents / 100).toFixed(2)}</span>
             </div>
-            <p className="text-xs text-gray-400">Stylist: {receipt.staffName}</p>
+            {receipt.surchargeCents && receipt.surchargeCents > 0 ? (
+                <div className="flex justify-between text-xs text-gray-600 dark:text-gray-300 mt-1">
+                <span>Stylist Surcharge</span>
+                <span>RM {(receipt.surchargeCents / 100).toFixed(2)}</span>
+                </div>
+            ) : null}
+            <p className="text-xs text-gray-400 mt-1">Stylist: {receipt.staffName}</p>
           </div>
-          
-          {receipt.surchargeCents && receipt.surchargeCents > 0 ? (
-            <div className="flex justify-between text-xs text-gray-600 dark:text-gray-300">
-              <span>Stylist Surcharge</span>
-              <span>RM {(receipt.surchargeCents / 100).toFixed(2)}</span>
-            </div>
-          ) : null}
 
           <div className="border-t border-gray-100 dark:border-white/5 my-2"></div>
           <div className="space-y-2 text-sm">

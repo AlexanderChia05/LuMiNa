@@ -10,16 +10,19 @@ interface NotificationsViewProps {
   handleMarkAllRead: () => void;
   selectedReceipt: Receipt | null;
   setSelectedReceipt: (receipt: Receipt | null) => void;
+  selectedReview: Notification | null;
+  setSelectedReview: (notification: Notification | null) => void;
 }
 
 export const NotificationsView = ({
   notifications,
   handleMarkAllRead,
   selectedReceipt,
-  setSelectedReceipt
+  setSelectedReceipt,
+  selectedReview,
+  setSelectedReview
 }: NotificationsViewProps) => {
   const [selectedReminder, setSelectedReminder] = useState<Notification | null>(null);
-  const [selectedReview, setSelectedReview] = useState<Notification | null>(null);
   const [activeFilter, setActiveFilter] = useState<'all' | 'reminder' | 'receipt' | 'review' | 'promo'>('all');
 
   const handleNotificationClick = (notif: Notification) => {

@@ -1,5 +1,4 @@
 
-
 import React, { useState } from 'react';
 import { Edit2, User as UserIcon, CreditCard, Settings, HelpCircle, LogOut, ChevronRight, Lock, X } from 'lucide-react';
 import { Button, Card } from '../UI';
@@ -10,6 +9,7 @@ interface ProfileViewProps {
   user: User;
   setIsEditProfileOpen: (open: boolean) => void;
   setIsManageCardsOpen: (open: boolean) => void;
+  setIsPinModalOpen: (open: boolean) => void;
   handleLogout: () => void;
 }
 
@@ -17,28 +17,9 @@ export const ProfileView = ({
   user,
   setIsEditProfileOpen,
   setIsManageCardsOpen,
+  setIsPinModalOpen,
   handleLogout
 }: ProfileViewProps) => {
-    const [pinModalOpen, setPinModalOpen] = useState(false);
-    const [newPin, setNewPin] = useState('');
-    const [pinError, setPinError] = useState('');
-
-    const handleUpdatePin = async () => {
-        if (!newPin || newPin.length !== 6) {
-            setPinError("PIN must be 6 digits.");
-            return;
-        }
-        const success = await Api.updateTransactionPin(user.id, newPin);
-        if (success) {
-            alert("PIN Updated Successfully");
-            setPinModalOpen(false);
-            setNewPin('');
-            setPinError('');
-        } else {
-            setPinError("Failed to update PIN.");
-        }
-    };
-
     return (
   <div className="animate-fadeIn space-y-6 pb-32">
     <div className="text-center pt-4">
@@ -72,7 +53,7 @@ export const ProfileView = ({
           <div className="flex items-center gap-3"><CreditCard size={20} className="text-rose-500" /><span className="font-medium text-gray-900 dark:text-white">Payment Methods</span></div>
           <ChevronRight size={16} className="text-gray-400 group-hover:text-rose-500" />
       </Card>
-      <Card onClick={() => setPinModalOpen(true)} className="flex items-center justify-between group hover:bg-gray-50 dark:hover:bg-white/5 transition-colors border border-rose-100 dark:border-white/5 shadow-sm cursor-pointer">
+      <Card onClick={() => setIsPinModalOpen(true)} className="flex items-center justify-between group hover:bg-gray-50 dark:hover:bg-white/5 transition-colors border border-rose-100 dark:border-white/5 shadow-sm cursor-pointer">
           <div className="flex items-center gap-3"><Lock size={20} className="text-rose-500" /><span className="font-medium text-gray-900 dark:text-white">Transaction PIN</span></div>
           <ChevronRight size={16} className="text-gray-400 group-hover:text-rose-500" />
       </Card>
@@ -86,31 +67,6 @@ export const ProfileView = ({
       </Card>
     </div>
     <Button variant="outline" onClick={handleLogout} className="w-full text-red-500 border-red-200 hover:bg-red-50 mt-4 flex items-center gap-2"><LogOut size={18}/> Log Out</Button>
-
-    {pinModalOpen && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
-            <Card className="w-full max-w-sm bg-white dark:bg-neutral-800 p-6 shadow-2xl border-none">
-                <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">Update PIN</h3>
-                    <button onClick={() => setPinModalOpen(false)}><X size={20} className="text-gray-500"/></button>
-                </div>
-                <div className="space-y-4">
-                    <p className="text-sm text-gray-600 dark:text-gray-300">Set a new 6-digit PIN for Touch 'n Go transactions.</p>
-                    <input 
-                        type="password" 
-                        placeholder="Enter 6-digit PIN"
-                        value={newPin}
-                        maxLength={6}
-                        inputMode="numeric"
-                        onChange={(e) => setNewPin(e.target.value.replace(/\D/g,''))}
-                        className="w-full p-3 rounded-xl border border-gray-300 bg-white text-black outline-none tracking-widest text-center text-lg font-bold"
-                    />
-                    {pinError && <p className="text-xs text-red-500 font-bold text-center">{pinError}</p>}
-                    <Button onClick={handleUpdatePin} className="w-full">Save PIN</Button>
-                </div>
-            </Card>
-        </div>
-    )}
   </div>
 );
 };

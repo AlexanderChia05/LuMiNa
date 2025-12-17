@@ -70,6 +70,7 @@ export const ClientBooking = ({ userId }: ClientBookingProps) => {
   const [rewardHistory, setRewardHistory] = useState<RewardHistoryItem[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [selectedReceipt, setSelectedReceipt] = useState<Receipt | null>(null); 
+  const [selectedReview, setSelectedReview] = useState<Notification | null>(null); // Lifted state
 
   // Modals
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
@@ -88,6 +89,11 @@ export const ClientBooking = ({ userId }: ClientBookingProps) => {
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const [isManageCardsOpen, setIsManageCardsOpen] = useState(false);
   const [rescheduleStaffId, setRescheduleStaffId] = useState<string>('');
+
+  // PIN Modal State (Lifted from ProfileView)
+  const [isPinModalOpen, setIsPinModalOpen] = useState(false);
+  const [pinCode, setPinCode] = useState('');
+  const [pinError, setPinError] = useState('');
 
   // Review Modal State
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
@@ -389,6 +395,24 @@ export const ClientBooking = ({ userId }: ClientBookingProps) => {
     await AuthService.signOut(); 
   };
 
+  const handleUpdatePin = async () => {
+        if (!pinCode || pinCode.length !== 6) {
+            setPinError("PIN must be 6 digits.");
+            return;
+        }
+        if(user) {
+            const success = await Api.updateTransactionPin(user.id, pinCode);
+            if (success) {
+                alert("PIN Updated Successfully");
+                setIsPinModalOpen(false);
+                setPinCode('');
+                setPinError('');
+            } else {
+                setPinError("Failed to update PIN.");
+            }
+        }
+  };
+
   // Cancel
   const initiateCancel = (id: string) => { setSelectedAppointmentId(id); setCancelModalOpen(true); };
   const confirmCancel = async () => { 
@@ -562,6 +586,25 @@ export const ClientBooking = ({ userId }: ClientBookingProps) => {
      );
   }
 
+  // Calculate Tab Bar Visibility
+  // Hide if:
+  // 1. In Booking Flow (except 'services')
+  // 2. My Bookings list is open
+  // 3. Viewing a Receipt
+  // 4. Viewing an Admin Response (Review)
+  // 5. Viewing Edit Profile Modal
+  // 6. Viewing Manage Cards Modal
+  // 7. Viewing Update PIN Modal
+  const isTabBarVisible = 
+      !showMyBookings && 
+      !selectedReceipt && 
+      !selectedReview && 
+      !isEditProfileOpen &&
+      !isManageCardsOpen &&
+      !isPinModalOpen &&
+      activeTab !== 'rewards' && 
+      (activeTab !== 'book' || bookingStep === 'services');
+
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-gray-200 dark:bg-gray-900 p-0 md:p-8">
       <div className="w-full h-full md:w-[440px] md:h-[956px] shrink-0 md:rounded-[60px] relative bg-white dark:bg-neutral-900 shadow-2xl overflow-hidden flex flex-col border-0 md:border-[8px] border-neutral-900/5 dark:border-neutral-800 md:ring-1 ring-black/5">
@@ -647,6 +690,8 @@ export const ClientBooking = ({ userId }: ClientBookingProps) => {
                     handleMarkAllRead={handleMarkAllRead}
                     selectedReceipt={selectedReceipt}
                     setSelectedReceipt={setSelectedReceipt}
+                    selectedReview={selectedReview}
+                    setSelectedReview={setSelectedReview}
                  />
                )}
                {activeTab === 'profile' && (
@@ -654,6 +699,7 @@ export const ClientBooking = ({ userId }: ClientBookingProps) => {
                     user={user}
                     setIsEditProfileOpen={openEditProfile}
                     setIsManageCardsOpen={setIsManageCardsOpen}
+                    setIsPinModalOpen={setIsPinModalOpen}
                     handleLogout={handleLogout}
                  />
                )}
@@ -662,7 +708,7 @@ export const ClientBooking = ({ userId }: ClientBookingProps) => {
         </main>
 
         {/* Hover Segmented Tab Bar */}
-        {!showMyBookings && activeTab !== 'rewards' && bookingStep !== 'success' && (
+        {isTabBarVisible && (
           <div className="absolute bottom-8 left-1/2 -translate-x-1/2 w-[90%] max-w-[360px] z-50">
              <div className="bg-gray-200/90 dark:bg-zinc-800/90 backdrop-blur-xl border border-white/20 p-1 rounded-full flex items-center justify-between shadow-2xl relative">
                 <div className="absolute top-1 bottom-1 bg-white dark:bg-neutral-600 rounded-full shadow-md transition-all duration-300 ease-out z-0"
@@ -939,6 +985,31 @@ export const ClientBooking = ({ userId }: ClientBookingProps) => {
               </div>
             </Card>
           </div>
+        )}
+
+        {isPinModalOpen && (
+            <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+                <Card className="w-full max-w-sm bg-white dark:bg-neutral-800 p-6 shadow-2xl border-none">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white">Update PIN</h3>
+                        <button onClick={() => setIsPinModalOpen(false)}><X size={20} className="text-gray-500"/></button>
+                    </div>
+                    <div className="space-y-4">
+                        <p className="text-sm text-gray-600 dark:text-gray-300">Set a new 6-digit PIN for Touch 'n Go transactions.</p>
+                        <input 
+                            type="password" 
+                            placeholder="Enter 6-digit PIN"
+                            value={pinCode}
+                            maxLength={6}
+                            inputMode="numeric"
+                            onChange={(e) => setPinCode(e.target.value.replace(/\D/g,''))}
+                            className="w-full p-3 rounded-xl border border-gray-300 bg-white text-black outline-none tracking-widest text-center text-lg font-bold"
+                        />
+                        {pinError && <p className="text-xs text-red-500 font-bold text-center">{pinError}</p>}
+                        <Button onClick={handleUpdatePin} className="w-full">Save PIN</Button>
+                    </div>
+                </Card>
+            </div>
         )}
 
       </div>
