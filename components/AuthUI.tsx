@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Mail, Lock, User, Phone, ArrowRight, Eye, EyeOff, Loader, Key, ChevronLeft, RefreshCw, AlertCircle } from 'lucide-react';
 import { Button } from './UI';
@@ -11,7 +10,7 @@ interface AuthUIProps {
   defaultMode: 'client' | 'admin' | 'staff';
 }
 
-export const AuthUI = ({ onLoginSuccess, defaultMode }: AuthUIProps) => {
+export const AuthUI: React.FC<AuthUIProps> = ({ onLoginSuccess, defaultMode }) => {
   const [view, setView] = useState<'login' | 'register' | 'forgot' | 'otp' | 'reset_password'>('login');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

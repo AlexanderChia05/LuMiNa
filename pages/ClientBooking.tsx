@@ -274,6 +274,12 @@ export const ClientBooking = ({ userId }: ClientBookingProps) => {
         setCardError("Card has expired.");
         return;
     }
+    
+    // NEW CHECK
+    if (yy > currentYear + 10) {
+        setCardError("Expiry year invalid (max 10 years).");
+        return;
+    }
 
     if (cvc.length < 3) {
         setCardError("Invalid CVC.");

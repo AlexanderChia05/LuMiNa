@@ -121,6 +121,44 @@ export const BookingView = ({
       if (savedCards.length > 0) setSelectedSimCardId(savedCards[0].id);
   }, [savedCards]);
   
+  const validateCard = () => {
+      // Logic for new card (Applied to both Main Booking Flow and Simulator)
+      const methodToCheck = isPaymentModalOpen ? simPaymentMethod : paymentMethod;
+
+      if (!selectedSimCardId && methodToCheck === 'card') {
+          const cleanNum = cardForm.number.replace(/\D/g, '');
+          
+          // 1. Check Brand (Visa = 4, Mastercard = 2 or 5)
+          if (!cleanNum.startsWith('4') && !cleanNum.startsWith('5') && !cleanNum.startsWith('2')) {
+              return "Only Visa (starts with 4) and Mastercard (starts with 2 or 5) are accepted.";
+          }
+          
+          if (cleanNum.length < 15 || cleanNum.length > 19) return "Invalid card number length.";
+          
+          // 2. Check Expiry
+          if (!cardForm.expiry || cardForm.expiry.length !== 5) return "Invalid expiry.";
+          const [mm, yy] = cardForm.expiry.split('/').map(Number);
+          const now = new Date();
+          const curYear = parseInt(now.getFullYear().toString().slice(-2));
+          const curMonth = now.getMonth() + 1;
+          
+          if (!mm || !yy || mm < 1 || mm > 12) return "Invalid month.";
+          
+          // Expired Check
+          if (yy < curYear || (yy === curYear && mm < curMonth)) return "Card has expired.";
+          
+          // 10-Year Validity Window Check
+          if (yy > curYear + 10) return "Card expiry year is invalid (must be within 10 years).";
+
+          // 3. Check CVC
+          if (cardForm.cvc.length < 3) return "Invalid CVC.";
+          
+          // 4. Check Holder Name
+          if (!cardForm.name.trim()) return "Cardholder name is required.";
+      }
+      return null;
+  };
+
   // Promotion Logic
   const [applicablePromotions, setApplicablePromotions] = useState<Promotion[]>([]);
   const [selectedPromotion, setSelectedPromotion] = useState<Promotion | null>(null);
@@ -345,41 +383,6 @@ export const BookingView = ({
       setOtp('');
       setTngPin('');
       setSaveNewCard(false); // Reset Checkbox
-  };
-
-  const validateCard = () => {
-      // Logic for new card
-      if (!selectedSimCardId) {
-          const cleanNum = cardForm.number.replace(/\D/g, '');
-          
-          // 1. Check Brand (Visa = 4, Mastercard = 2 or 5)
-          if (!cleanNum.startsWith('4') && !cleanNum.startsWith('5') && !cleanNum.startsWith('2')) {
-              return "Only Visa (starts with 4) and Mastercard (starts with 2 or 5) are accepted.";
-          }
-          
-          if (cleanNum.length < 15 || cleanNum.length > 19) return "Invalid card number length.";
-          
-          // 2. Check Expiry
-          if (!cardForm.expiry || cardForm.expiry.length !== 5) return "Invalid expiry.";
-          const [mm, yy] = cardForm.expiry.split('/').map(Number);
-          const now = new Date();
-          const curYear = parseInt(now.getFullYear().toString().slice(-2));
-          const curMonth = now.getMonth() + 1;
-          
-          if (!mm || !yy || mm < 1 || mm > 12) return "Invalid month.";
-          if (yy < curYear || (yy === curYear && mm < curMonth)) return "Card has expired.";
-
-          // 3. Check CVC
-          if (cardForm.cvc.length < 3) return "Invalid CVC.";
-          
-          // 4. Check Holder Name
-          if (!cardForm.name.trim()) return "Cardholder name is required.";
-      } else {
-          // Logic for saved card
-          // Removed CVC check as per requirement
-          return null;
-      }
-      return null;
   };
 
   const proceedToOTP = async () => {
@@ -700,7 +703,7 @@ export const BookingView = ({
                                    {savedCards.map(c => (
                                        <div key={c.id} onClick={() => setSelectedSimCardId(c.id)} className={`p-3 rounded-xl border cursor-pointer flex items-center gap-3 ${selectedSimCardId === c.id ? 'border-rose-500 bg-rose-50 dark:bg-rose-900/20' : 'border-gray-200 dark:border-white/10'}`}>
                                             <CreditCard size={18} className="text-gray-600 dark:text-gray-400" />
-                                            <span className="flex-1 font-mono font-bold text-gray-900 dark:text-white">•••• {c.last4}</span>
+                                            <span className="flex-1 font-mono font-bold text-gray-900 dark:text-white capitalize">{c.brand} •••• {c.last4}</span>
                                             {selectedSimCardId === c.id && <Check size={16} className="text-rose-500" />}
                                        </div>
                                    ))}
