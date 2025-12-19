@@ -1,8 +1,6 @@
 
 # Lumina Salon System 💅✨
 
-Link: https://alexanderchia05.github.io/LuMiNa/
-
 **Lumina** is a production-grade, full-stack Salon Appointment System built with **React**, **TypeScript**, and **Supabase**. It features a modern, "glass-morphic" UI/UX and consists of three distinct integrated applications:
 
 1.  **Client App:** Mobile-first booking experience with loyalty rewards and payment simulation.

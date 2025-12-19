@@ -1,9 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Clock, Users, Star, ChevronRight, Check, Smartphone, CreditCard, Wallet, CheckCircle, Gift, ChevronLeft, Crown, Building2, X, Tag, ExternalLink, QrCode, Lock, Key, Mail } from 'lucide-react';
 import { Button, Card, Avatar } from '../UI';
 import { Service, Staff, Reward, CreditCard as CreditCardType, Receipt, Appointment, StylistRank, Promotion } from '../../types';
-import { getBookingDate, formatCardNumber, formatCardExpiry, formatPhoneNumber, getRankSurcharge } from '../../utils/helpers';
+import { getBookingDate, formatCardNumber, formatCardExpiry, formatPhoneNumber, getRankSurcharge, formatSGDate } from '../../utils/helpers';
 import { ReceiptCard } from './ReceiptCard';
 import { Api } from '../../services/api';
 import { AuthService } from '../../services/auth';
@@ -167,7 +166,7 @@ export const BookingView = ({
      const checkPromotions = async () => {
         if (!selectedService) {
            setApplicablePromotions([]);
-           setSelectedPromotion(null);
+           // Selection logic is handled by auto-apply effect
            return;
         }
         const promos = await Api.getPromotions();
@@ -188,30 +187,94 @@ export const BookingView = ({
         });
         
         setApplicablePromotions(validPromos);
-        
-        // Auto-select the first promotion if available, and clear voucher
-        if (validPromos.length > 0) {
-           setSelectedPromotion(validPromos[0]);
-           setSelectedVoucher(null);
-        } else {
-           setSelectedPromotion(null);
-        }
      };
      checkPromotions();
   }, [selectedService]);
 
-  // NEW EFFECT: Voucher Re-validation
+  // Auto-apply Best Offer (Promotions or Vouchers)
   useEffect(() => {
-      if (selectedVoucher && !selectedVoucher.title.includes('%')) {
-          const base = selectedService?.priceCents || 0;
-          const surcharge = selectedStaff ? getRankSurcharge(selectedStaff.rank) : 0;
-          const total = base + surcharge;
-          
-          if (selectedVoucher.discountCents >= total) {
-              setSelectedVoucher(null);
+      if (!selectedService) return;
+
+      const base = selectedService.priceCents;
+      const surcharge = selectedStaff ? getRankSurcharge(selectedStaff.rank) : 0;
+      const total = base + surcharge;
+
+      let bestDiscount = 0;
+      let bestType: 'promo' | 'voucher' | null = null;
+      let bestItem: any = null;
+
+      // 1. Evaluate Promotions
+      applicablePromotions.forEach(p => {
+          let discount = 0;
+          const label = p.discount;
+          if (label.includes('%')) {
+              const percentage = parseInt(label.replace(/\D/g, ''));
+              if (!isNaN(percentage)) discount = Math.round(base * (percentage / 100)); // Promo usually on service base price
+          } else if (label.toLowerCase().includes('rm')) {
+              const amount = parseInt(label.replace(/\D/g, ''));
+              if (!isNaN(amount)) discount = amount * 100;
           }
+          
+          if (discount > bestDiscount) {
+              bestDiscount = discount;
+              bestType = 'promo';
+              bestItem = p;
+          }
+      });
+
+      // 2. Evaluate Vouchers
+      myVouchers.forEach(v => {
+          let discount = 0;
+          const isPercentage = v.title.includes('%');
+          
+          if (isPercentage) {
+               const percentage = parseInt(v.title.replace(/\D/g, ''));
+               if (!isNaN(percentage)) discount = Math.round(total * (percentage / 100));
+          } else {
+               // Fixed voucher valid only if less than total
+               if (v.discountCents < total) {
+                   discount = v.discountCents;
+               } else {
+                   discount = 0; 
+               }
+          }
+
+          if (discount > bestDiscount) {
+              bestDiscount = discount;
+              bestType = 'voucher';
+              bestItem = v;
+          }
+      });
+
+      // 3. Apply Best
+      if (bestType === 'promo') {
+          setSelectedPromotion(bestItem);
+          setSelectedVoucher(null);
+      } else if (bestType === 'voucher') {
+          setSelectedVoucher(bestItem);
+          setSelectedPromotion(null);
+      } else {
+          // Keep current if manually selected? Or reset?
+          // Requirement says "Auto-apply", implying override.
+          setSelectedPromotion(null);
+          setSelectedVoucher(null);
       }
-  }, [selectedService, selectedStaff, selectedVoucher]);
+
+  }, [applicablePromotions, myVouchers, selectedService, selectedStaff]);
+
+  // Sort Vouchers by Expiry Date (Nearest first)
+  const sortedVouchers = [...myVouchers].sort((a, b) => {
+      if (!a.expiryDate || a.expiryDate === 'No Expiry') return 1;
+      if (!b.expiryDate || b.expiryDate === 'No Expiry') return -1;
+      
+      const [d1, m1, y1] = a.expiryDate.split('/').map(Number);
+      const [d2, m2, y2] = b.expiryDate.split('/').map(Number);
+      
+      const dateA = new Date(y1, m1 - 1, d1);
+      const dateB = new Date(y2, m2 - 1, d2);
+      
+      return dateA.getTime() - dateB.getTime();
+  });
 
   const handleSelectOffer = (item: Promotion | Reward, type: 'promo' | 'voucher') => {
       if (type === 'promo') {
@@ -552,7 +615,7 @@ export const BookingView = ({
                      <div 
                         key={promo.id} 
                         onClick={() => handleSelectOffer(promo, 'promo')}
-                        className={`p-3 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between ${selectedPromotion?.id === promo.id ? 'border-green-500 bg-green-50 dark:bg-green-900/20' : 'border-gray-100 dark:border-white/10 bg-white dark:bg-white/5 hover:border-gray-300 dark:hover:border-white/20'}`}
+                        className={`relative p-3 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between ${selectedPromotion?.id === promo.id ? 'border-green-500 bg-green-50 dark:bg-green-900/20' : 'border-gray-100 dark:border-white/10 bg-white dark:bg-white/5 hover:border-gray-300 dark:hover:border-white/20'}`}
                      >
                         <div>
                            <p className="font-bold text-gray-900 dark:text-white text-sm flex items-center gap-2">
@@ -565,43 +628,54 @@ export const BookingView = ({
                         {selectedPromotion?.id === promo.id && (
                            <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center"><Check size={12} className="text-white"/></div>
                         )}
+                        {/* Event Dates Display */}
+                        <div className="absolute bottom-1 right-2 text-[9px] text-gray-400 dark:text-gray-500 font-medium">
+                           {formatSGDate(promo.startDate)} - {formatSGDate(promo.endDate)}
+                        </div>
                      </div>
                   ))}
 
-                  {/* My Vouchers List - Update Logic to Disable invalid ones */}
-                  {myVouchers.map(v => {
-                     // Check validity
-                     const isFixed = !v.title.includes('%');
-                     const isDisabled = isFixed && v.discountCents >= estimatedTotal;
-
+                  {/* My Vouchers List - Sorted by Expiry */}
+                  {sortedVouchers
+                    .filter(v => {
+                        const isFixed = !v.title.includes('%');
+                        return !(isFixed && v.discountCents >= estimatedTotal);
+                    })
+                    .map(v => {
                      return (
                        <div 
                           key={v.id} 
                           onClick={() => handleSelectOffer(v, 'voucher')}
-                          className={`p-3 rounded-xl border-2 transition-all flex items-center justify-between 
-                             ${isDisabled ? 'opacity-50 cursor-not-allowed border-gray-100 bg-gray-50 dark:bg-neutral-800 dark:border-neutral-700' 
-                               : selectedVoucher?.id === v.id ? 'border-rose-500 bg-rose-50 dark:bg-rose-900/20 cursor-pointer' 
-                               : 'border-gray-100 dark:border-white/10 bg-white dark:bg-white/5 hover:border-gray-300 dark:hover:border-white/20 cursor-pointer'}`}
+                          className={`relative p-3 rounded-xl border-2 transition-all flex items-center justify-between cursor-pointer
+                             ${selectedVoucher?.id === v.id ? 'border-rose-500 bg-rose-50 dark:bg-rose-900/20' 
+                               : 'border-gray-100 dark:border-white/10 bg-white dark:bg-white/5 hover:border-gray-300 dark:hover:border-white/20'}`}
                        >
                           <div>
-                             <p className={`font-bold text-sm flex items-center gap-2 ${isDisabled ? 'text-gray-400' : 'text-gray-900 dark:text-white'}`}>
+                             <p className="font-bold text-sm flex items-center gap-2 text-gray-900 dark:text-white">
                                 <Gift size={14} className={selectedVoucher?.id === v.id ? "text-rose-500" : "text-gray-400"}/> 
                                 {v.title}
                              </p>
                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{v.description}</p>
-                             {isDisabled && (
-                                <p className="text-[10px] text-red-500 font-bold mt-1">Order value too low for this voucher</p>
-                             )}
-                             {!isDisabled && <p className="text-[10px] text-gray-400 mt-1">My Voucher</p>}
+                             <p className="text-[10px] text-gray-400 mt-1">My Voucher</p>
                           </div>
+                          
+                          {/* Selected Checkmark */}
                           {selectedVoucher?.id === v.id && (
                              <div className="w-5 h-5 bg-rose-500 rounded-full flex items-center justify-center"><Check size={12} className="text-white"/></div>
                           )}
+
+                          {/* Expiry Date Display */}
+                          <div className="absolute bottom-1 right-2 text-[9px] text-gray-400 dark:text-gray-500 font-medium">
+                             Exp: {v.expiryDate || 'N/A'}
+                          </div>
                        </div>
                      );
                   })}
 
-                  {applicablePromotions.length === 0 && myVouchers.length === 0 && (
+                  {applicablePromotions.length === 0 && sortedVouchers.filter(v => {
+                      const isFixed = !v.title.includes('%');
+                      return !(isFixed && v.discountCents >= estimatedTotal);
+                  }).length === 0 && (
                      <p className="text-xs text-gray-500 bg-gray-50 dark:bg-white/5 p-3 rounded-xl border border-gray-200 dark:border-white/10 text-center">
                         No applicable offers or vouchers for this service.
                      </p>
