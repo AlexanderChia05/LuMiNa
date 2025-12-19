@@ -96,7 +96,6 @@ The system is pre-seeded with the following accounts for testing:
 
 ### 📱 Client App
 *   **Sign Up:** You can register a new account on the login screen.
-*   **Demo User:** If created via script, `demo@gmail.com` / `password123` (check seed data).
 
 > **Context Switcher:** In the bottom-right corner of the application, there is a hidden development menu (hover to reveal) that allows you to quickly switch between Client, Staff, and Admin views for testing purposes.
 
@@ -106,7 +105,7 @@ The system is pre-seeded with the following accounts for testing:
 
 When booking an appointment in the Client App:
 1.  Select **Credit Card** or **Touch 'n Go**.
-2.  **Card:** Use any number starting with `4242` (Visa) or `5555` (Mastercard). Expiry must be in the future.
+2.  **Card:** Use any number starting with `4242` (Visa) or `5555` (Mastercard). Expiry must be in the future and within next 10 years.
 3.  **Touch 'n Go:** Default PIN is usually set in profile, or use `123456` if prompted for Simulator PIN.
 4.  **OTP:** Enter `123456` to bypass verification.
 
@@ -117,8 +116,3 @@ When booking an appointment in the Client App:
 *   **Theme:** The app supports Light/Dark mode. Toggle it in the Client Profile or Admin header.
 *   **Colors:** The primary color scheme is "Rose Gold" (`text-rose-500`), configured in `index.html` CSS variables and `tailwind.config.js`.
 
----
-
-## 📄 License
-
-This project is open-source and available under the MIT License.
