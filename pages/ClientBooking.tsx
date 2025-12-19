@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Home, Calendar, Bell, User as UserIcon, AlertTriangle, X, CreditCard, AlertCircle, Star, MessageSquare, ChevronLeft, ChevronRight, Check } from 'lucide-react';
 import { Card, Button, Avatar } from '../components/UI';
@@ -448,8 +447,11 @@ export const ClientBooking = ({ userId }: ClientBookingProps) => {
     today.setHours(0,0,0,0);
     const minDate = new Date(today);
     minDate.setDate(today.getDate() + 5); 
+
+    const maxDate = new Date(minDate);
+    maxDate.setMonth(maxDate.getMonth() + 3);
     
-    if (date < minDate) return;
+    if (date < minDate || date > maxDate) return;
 
     const exactOffset = Math.floor((date.getTime() - today.getTime()) / (1000 * 3600 * 24)) - 5;
     setRescheduleDateOffset(exactOffset);
@@ -476,6 +478,9 @@ export const ClientBooking = ({ userId }: ClientBookingProps) => {
     const minDate = new Date(today);
     minDate.setDate(today.getDate() + 5);
 
+    const maxDate = new Date(minDate);
+    maxDate.setMonth(maxDate.getMonth() + 3);
+
     return (
       <div className="bg-neutral-800 rounded-2xl p-4 border border-neutral-700 shadow-sm mb-4">
         <div className="flex justify-between items-center mb-4">
@@ -489,7 +494,7 @@ export const ClientBooking = ({ userId }: ClientBookingProps) => {
         <div className="grid grid-cols-7 gap-1">
           {days.map((date, idx) => {
             if (!date) return <div key={idx} />;
-            const disabled = date < minDate;
+            const disabled = date < minDate || date > maxDate;
             const isSelected = date.getTime() === selectedDate.getTime();
             return (
               <button key={idx} onClick={() => handleRescheduleDateClick(date)} disabled={disabled} className={`h-9 w-9 rounded-full flex items-center justify-center text-sm font-medium transition-all ${isSelected ? 'bg-rose-500 text-white shadow-md' : ''} ${!isSelected && !disabled ? 'text-white hover:bg-neutral-700' : ''} ${disabled ? 'text-neutral-600 cursor-not-allowed opacity-50' : ''}`}>
@@ -778,7 +783,7 @@ export const ClientBooking = ({ userId }: ClientBookingProps) => {
                  </div>
                  
                  <div>
-                    <label className="text-xs font-bold text-gray-500 mb-2 block uppercase">Select Date</label>
+                    <label className="text-xs font-bold text-gray-500 mb-2 block uppercase">Select Date (Booking starts from +5 days)</label>
                     {renderRescheduleCalendar()}
                  </div>
 

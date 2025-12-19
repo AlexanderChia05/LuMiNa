@@ -328,7 +328,11 @@ export const BookingView = ({
     today.setHours(0,0,0,0);
     const minDate = new Date(today);
     minDate.setDate(today.getDate() + 5); 
-    return date < minDate;
+
+    const maxDate = new Date(minDate);
+    maxDate.setMonth(maxDate.getMonth() + 3);
+
+    return date < minDate || date > maxDate;
   };
 
   const handleDateClick = (date: Date) => {
